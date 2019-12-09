@@ -4,12 +4,12 @@ def supportLibVersion = '27.1.1'
 def lifecycleVersion = '1.1.1'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 'Two Six Labs:PE for Android:28'
     defaultConfig {
         applicationId "cz.martykan.forecastie"
-        minSdkVersion 15
+        minSdkVersion 28
         //noinspection ExpiringTargetSdkVersion
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 40
         versionName "1.12"
     }

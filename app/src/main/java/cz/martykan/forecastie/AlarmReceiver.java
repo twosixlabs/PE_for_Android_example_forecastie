@@ -6,16 +6,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.privatedata.DataRequest;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ResultReceiver;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.privatedata.PrivateDataManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,10 +38,26 @@ import cz.martykan.forecastie.widgets.DashClockWeatherExtension;
 public class AlarmReceiver extends BroadcastReceiver {
 
     Context context;
+    PrivateDataManager pdm;
+
+    private ResultReceiver microPalReceiver = new ResultReceiver(new Handler(Looper.getMainLooper())){
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            super.onReceiveResult(resultCode, resultData);
+            if (resultData != null) {
+                new GetCityNameTask().execute(String.valueOf(resultData.getDouble("latitude")), String.valueOf(resultData.getDouble("longitude")));
+            } else {
+                Toast.makeText(context, "Couldn't determine user's zip code", Toast.LENGTH_LONG).show();
+                new GetWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                new GetLongTermWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        }
+    };
 
     @Override
     public void onReceive(Context context, Intent intent) {
         this.context = context;
+        pdm = PrivateDataManager.getInstance();
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
             String interval = sp.getString("refreshInterval", "1");
@@ -65,7 +84,20 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (isNetworkAvailable()) {
             failed = false;
             if (isUpdateLocation()) {
-                new GetLocationAndWeatherTask().execute(); // This method calls the two methods below once it has determined a location
+                Bundle locationParams = new DataRequest.LocationParamsBuilder()
+                        .setTimeoutMillis(1000)
+                        .setUpdateMode(DataRequest.LocationParamsBuilder.MODE_LAST_LOCATION)
+                        .build();
+
+
+                Bundle palParams = new Bundle();
+                DataRequest.Purpose purpose = DataRequest.Purpose.UTILITY("Get location of zip code");
+                DataRequest request = new DataRequest(context,
+                        DataRequest.DataType.LOCATION, locationParams,
+                        context.getString(R.string.zipcode_micropal), null,
+                        purpose, microPalReceiver);
+
+                pdm.requestData(request);
             } else {
                 new GetWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 new GetLongTermWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
@@ -189,97 +221,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
     }
 
-    public class GetLocationAndWeatherTask extends AsyncTask <String, String, Void> {
-        private static final String TAG = "LocationAndWTask";
-
-        private final double MAX_RUNNING_TIME = 30 * 1000;
-
-        private LocationManager locationManager;
-        private BackgroundLocationListener locationListener;
-
-        @Override
-        protected void onPreExecute() {
-            Log.d(TAG, "Trying to determine location...");
-            locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-            locationListener = new BackgroundLocationListener();
-            try {
-                if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                    // Only uses 'network' location, as asking the GPS every time would drain too much battery
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-                } else {
-                    Log.d(TAG, "'Network' location is not enabled. Cancelling determining location.");
-                    onPostExecute(null);
-                }
-            } catch (SecurityException e) {
-                Log.e(TAG, "Couldn't request location updates. Probably this is an Android (>M) runtime permissions issue ", e);
-            }
-        }
-
-        @Override
-        protected Void doInBackground(String... params) {
-            long startTime = System.currentTimeMillis();
-            long runningTime = 0;
-            while (locationListener.getLocation() == null && runningTime < MAX_RUNNING_TIME) { // Give up after 30 seconds
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Error occurred while waiting for location update", e);
-                }
-                runningTime = System.currentTimeMillis() - startTime;
-            }
-            if (locationListener.getLocation() == null) {
-                Log.d(TAG, String.format("Couldn't determine location in less than %s seconds", MAX_RUNNING_TIME / 1000));
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            Location location = locationListener.getLocation();
-            if (location != null) {
-                Log.d(TAG, String.format("Determined location: latitude %f - longitude %f", location.getLatitude(), location.getLongitude()));
-                new GetCityNameTask().execute(String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude()));
-            } else {
-                Log.e(TAG, "Couldn't determine location. Using last known location.");
-                new GetWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                new GetLongTermWeatherTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-            }
-            try {
-                locationManager.removeUpdates(locationListener);
-            } catch (SecurityException e) {
-                Log.e(TAG, "Couldn't remove location updates. Probably this is an Android (>M) runtime permissions", e);
-            }
-        }
-
-        public class BackgroundLocationListener implements LocationListener {
-            private static final String TAG = "LocationListener";
-            private Location location;
-
-            @Override
-            public void onLocationChanged(Location location) {
-                this.location = location;
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-
-            }
-
-            public Location getLocation() {
-                return location;
-            }
-        }
-    }
 
     public class GetCityNameTask extends AsyncTask <String, String, Void> {
         private static final String TAG = "GetCityNameTask";

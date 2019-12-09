@@ -1,6 +1,13 @@
 <resources>
     <string name="app_name">Forecastie</string>
 
+    <!-- PE Android additional strings -->
+    <string name="zipcode_micropal">"com.twosixlabs.locationmicropal.ZipcodeMicroPAL"</string>
+    <string name="prefs_location_updates">updateLocationAutomatically</string>
+    <string name="latitude">latitude</string>
+    <string name="longitude">longitude</string>
+    <!-- End PE Android additional strings -->
+
     <string name="action_search">Search</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_settings">Settings</string>

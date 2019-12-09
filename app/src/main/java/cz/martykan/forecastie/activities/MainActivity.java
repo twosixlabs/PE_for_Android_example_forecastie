@@ -1,28 +1,26 @@
 package cz.martykan.forecastie.activities;
 
-import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Typeface;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.privatedata.DataRequest;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ResultReceiver;
 import android.preference.PreferenceManager;
+import android.privatedata.PrivateDataManager;
 import android.provider.Settings;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
@@ -34,6 +32,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -69,7 +68,7 @@ import cz.martykan.forecastie.widgets.DashClockWeatherExtension;
 
 import static cz.martykan.forecastie.utils.TimeUtils.isDayTime;
 
-public class MainActivity extends BaseActivity implements LocationListener {
+public class MainActivity extends BaseActivity{
     protected static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
 
     // Time in milliseconds; only reload weather if last update is longer ago than this value
@@ -97,7 +96,6 @@ public class MainActivity extends BaseActivity implements LocationListener {
 
     private View appView;
 
-    private LocationManager locationManager;
     private ProgressDialog progressDialog;
 
     private int theme;
@@ -112,12 +110,30 @@ public class MainActivity extends BaseActivity implements LocationListener {
 
     private Formatting formatting;
 
+    private PrivateDataManager pdm;
+
+    private ResultReceiver microPalReceiver = new ResultReceiver(new Handler(Looper.getMainLooper())){
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            super.onReceiveResult(resultCode, resultData);
+            if(resultData != null)
+                new ProvideCityNameTask(MainActivity.this, MainActivity.this, progressDialog)
+                        .execute("coords", Double.toString(resultData.getDouble(getString(R.string.latitude))),
+                                Double.toString(resultData.getDouble(getString(R.string.longitude))));
+            else
+                Toast.makeText(MainActivity.this, "Unable to determine user's zip code", Toast.LENGTH_LONG).show();
+        }
+    };
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Initialize the associated SharedPreferences file with default values
         PreferenceManager.setDefaultValues(this, R.xml.prefs, false);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+        pdm = PrivateDataManager.getInstance();
 
         widgetTransparent = prefs.getBoolean("transparentWidget", false);
         setTheme(theme = UI.getTheme(prefs.getString("theme", "fresh")));
@@ -131,6 +147,7 @@ public class MainActivity extends BaseActivity implements LocationListener {
         appView = findViewById(R.id.viewApp);
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
         AppBarLayout appBarLayout = findViewById(R.id.appBarLayout);
+
 
         progressDialog = new ProgressDialog(MainActivity.this);
 
@@ -238,14 +255,6 @@ public class MainActivity extends BaseActivity implements LocationListener {
     protected void onDestroy() {
         super.onDestroy();
         destroyed = true;
-
-        if (locationManager != null) {
-            try {
-                locationManager.removeUpdates(MainActivity.this);
-            } catch (SecurityException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private void preloadUVIndex() {
@@ -771,43 +780,21 @@ public class MainActivity extends BaseActivity implements LocationListener {
     }
 
     void getCityByLocation() {
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        //query microPAL for zipcode location
+        Bundle locationParams = new DataRequest.LocationParamsBuilder()
+                .setTimeoutMillis(1000)
+                .setUpdateMode(DataRequest.LocationParamsBuilder.MODE_LAST_LOCATION)
+                .build();
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-                showLocationSettingsDialog();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSIONS_ACCESS_FINE_LOCATION);
-            }
 
-        } else if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ||
-                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            progressDialog = new ProgressDialog(this);
-            progressDialog.setMessage(getString(R.string.getting_location));
-            progressDialog.setCancelable(false);
-            progressDialog.setButton(DialogInterface.BUTTON_NEGATIVE, getString(R.string.dialog_cancel), new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    try {
-                        locationManager.removeUpdates(MainActivity.this);
-                    } catch (SecurityException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            progressDialog.show();
-            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-            }
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-            }
-        } else {
-            showLocationSettingsDialog();
-        }
+        Bundle palParams = new Bundle();
+        DataRequest.Purpose purpose = DataRequest.Purpose.UTILITY("Get zip code");
+        DataRequest request = new DataRequest(MainActivity.this,
+                DataRequest.DataType.LOCATION, locationParams,
+                getString(R.string.zipcode_micropal), null,
+                purpose, microPalReceiver);
+
+        pdm.requestData(request);
     }
 
     private void showLocationSettingsDialog() {
@@ -826,48 +813,6 @@ public class MainActivity extends BaseActivity implements LocationListener {
             }
         });
         alertDialog.show();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_ACCESS_FINE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    getCityByLocation();
-                }
-                return;
-            }
-        }
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        progressDialog.hide();
-        try {
-            locationManager.removeUpdates(this);
-        } catch (SecurityException e) {
-            Log.e("LocationManager", "Error while trying to stop listening for location updates. This is probably a permissions issue", e);
-        }
-        Log.i("LOCATION (" + location.getProvider().toUpperCase() + ")", location.getLatitude() + ", " + location.getLongitude());
-        double latitude = location.getLatitude();
-        double longitude = location.getLongitude();
-        new ProvideCityNameTask(this, this, progressDialog).execute("coords", Double.toString(latitude), Double.toString(longitude));
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-
     }
 
 
