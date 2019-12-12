@@ -66,6 +66,10 @@ public abstract class GenericRequestTask extends AsyncTask<String, String, TaskO
                 reqParams = new String[]{"coords", lat, lon};
             } else if ("city".equals(zeroParam)) {
                 reqParams = new String[]{"city", params[1]};
+            } else if ("zip".equals(zeroParam)) {
+                String zip = params[1];
+                String countryCode = params[2];
+                reqParams = new String[]{"zip", zip, countryCode};
             }
         }
 
@@ -182,6 +186,8 @@ public abstract class GenericRequestTask extends AsyncTask<String, String, TaskO
                 urlBuilder.append("lat=").append(reqParams[1]).append("&lon=").append(reqParams[2]);
             } else if ("city".equals(zeroParam)) {
                 urlBuilder.append("q=").append(reqParams[1]);
+            } else if ("zip".equals(zeroParam)) {
+                urlBuilder.append("zip=").append(reqParams[1]).append(",").append(reqParams[2]);
             }
         } else {
             final String cityId = sp.getString("cityId", Constants.DEFAULT_CITY_ID);

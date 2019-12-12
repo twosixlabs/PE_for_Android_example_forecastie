@@ -118,8 +118,8 @@ public class MainActivity extends BaseActivity{
             super.onReceiveResult(resultCode, resultData);
             if(resultData != null)
                 new ProvideCityNameTask(MainActivity.this, MainActivity.this, progressDialog)
-                        .execute("coords", Double.toString(resultData.getDouble(getString(R.string.latitude))),
-                                Double.toString(resultData.getDouble(getString(R.string.longitude))));
+                        .execute("zip", resultData.getString(getString(R.string.zip_code)),
+                                resultData.getString(getString(R.string.country_code)));
             else
                 Toast.makeText(MainActivity.this, "Unable to determine user's zip code", Toast.LENGTH_LONG).show();
         }
@@ -963,7 +963,6 @@ public class MainActivity extends BaseActivity{
                     Log.e("Geolocation", "No city found");
                     return ParseResult.CITY_NOT_FOUND;
                 }
-
                 saveLocation(reader.getString("id"));
 
             } catch (JSONException e) {
