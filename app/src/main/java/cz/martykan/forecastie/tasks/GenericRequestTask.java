@@ -190,8 +190,9 @@ public abstract class GenericRequestTask extends AsyncTask<String, String, TaskO
                 urlBuilder.append("zip=").append(reqParams[1]).append(",").append(reqParams[2]);
             }
         } else {
-            final String cityId = sp.getString("cityId", Constants.DEFAULT_CITY_ID);
-            urlBuilder.append("id=").append(URLEncoder.encode(cityId, "UTF-8"));
+            final String zip = sp.getString("zip", Constants.DEFAULT_ZIP);
+            final String cc = sp.getString("countryCode", Constants.DEFAULT_CC);
+            urlBuilder.append("zip=").append(zip).append(",").append(cc);
         }
         urlBuilder.append("&lang=").append(getLanguage());
         urlBuilder.append("&mode=json");

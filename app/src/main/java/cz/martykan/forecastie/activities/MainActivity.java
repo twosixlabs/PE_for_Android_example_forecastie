@@ -116,12 +116,13 @@ public class MainActivity extends BaseActivity{
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             super.onReceiveResult(resultCode, resultData);
-            if(resultData != null)
-                new ProvideCityNameTask(MainActivity.this, MainActivity.this, progressDialog)
-                        .execute("zip", resultData.getString(getString(R.string.zip_code)),
-                                resultData.getString(getString(R.string.country_code)));
-            else
+            if(resultData != null) {
+                saveZipCode(resultData.getString(getString(R.string.zip_code)), resultData.getString(getString(R.string.country_code)));
+                refreshWeather();
+            }
+            else {
                 Toast.makeText(MainActivity.this, "Unable to determine user's zip code", Toast.LENGTH_LONG).show();
+            }
         }
     };
 
@@ -339,6 +340,14 @@ public class MainActivity extends BaseActivity{
 //            getLongTermWeather();
 //            getTodayUVIndex();
 //        }
+    }
+
+    private void saveZipCode(String zip, String countryCode) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("zip", zip);
+        editor.putString("countryCode", countryCode);
+        editor.commit();
     }
 
     private void aboutDialog() {
