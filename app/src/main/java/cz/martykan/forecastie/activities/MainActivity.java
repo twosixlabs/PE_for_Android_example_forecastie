@@ -116,7 +116,7 @@ public class MainActivity extends BaseActivity{
         @Override
         protected void onReceiveResult(int resultCode, Bundle resultData) {
             super.onReceiveResult(resultCode, resultData);
-            if(resultData != null) {
+            if(resultData != null && resultData.getBoolean(getString(R.string.success))) {
                 saveZipCode(resultData.getString(getString(R.string.zip_code)), resultData.getString(getString(R.string.country_code)));
                 refreshWeather();
             }

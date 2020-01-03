@@ -4,8 +4,7 @@
     <!-- PE Android additional strings -->
     <string name="zipcode_micropal">"com.twosixlabs.locationmicropal.ZipcodeMicroPAL"</string>
     <string name="prefs_location_updates">updateLocationAutomatically</string>
-    <string name="latitude">latitude</string>
-    <string name="longitude">longitude</string>
+    <string name="success">success</string>
     <string name="zip_code">zip_code</string>
     <string name="country_code">country_code</string>
     <!-- End PE Android additional strings -->
