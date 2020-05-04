@@ -1,12 +1,11 @@
-# Forecastie
-
-[![Release](https://img.shields.io/github/release/martykan/forecastie.png)](https://github.com/martykan/forecastie/releases)
-[![Circle CI](https://circleci.com/gh/martykan/forecastie/tree/master.png)](https://circleci.com/gh/martykan/forecastie/tree/master)
+# Privacy-Enhanced Forecastie
 
 A simple, opensource weather app for Android. It gathers data from [OpenWeatherMap](https://openweathermap.org/), via their public API.
 
-[<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Get_it_on_F-Droid.svg/200px-Get_it_on_F-Droid.svg.png" style="float: left; padding-right: 10px;">](https://f-droid.org/repository/browse/?fdid=cz.martykan.forecastie)
-[<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Get_it_on_Google_play.svg/500px-Get_it_on_Google_play.svg.png" style="float: left; padding-right: 10px;" height="70">](https://play.google.com/store/apps/details?id=com.casticalabs.forecastie)
+## PE Android Features
+* User's location remains private from the forcastie application
+   - Forcastie application only learns the zip code of the user's location
+
 
 ## Features
 * Simple design
@@ -19,9 +18,6 @@ A simple, opensource weather app for Android. It gathers data from [OpenWeatherM
 [<img src="https://i.imgur.com/8g7HPIL.png" width=250>](https://i.imgur.com/8g7HPIL.png)
 [<img src="https://i.imgur.com/ye2O2B2.png" width=250>](https://i.imgur.com/ye2O2B2.png)
 [<img src="https://i.imgur.com/olkk2cB.png" width=250>](https://i.imgur.com/olkk2cB.png)
-
-## Contribution
-If you have any ideas or issues, don't hesitate to reach out to us. Every contribution is welcome. See [Contributing](https://github.com/martykan/forecastie/blob/master/CONTRIBUTING.md) for further information.
 
 ## License
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)  
